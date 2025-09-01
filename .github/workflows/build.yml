@@ -1,45 +1,84 @@
-name: Build Keenetic Huawei Integration
+name: Build Keenetic SDK
 
 on:
   push:
     branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      # Общие переменные окружения
+      PATH: ${{ github.workspace }}/keenetic-sdk/staging_dir/host/bin:$PATH
+
     steps:
-    - name: Install basic utilities
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          tar curl wget git build-essential bzip2 lzip bc \
-          python3 perl automake autoconf gperf libncurses5-dev libssl-dev \
-          pkg-config gawk gettext sed gawk findutils attr xxd libtool flex \
-          unzip
+      # 1. Checkout репозитория
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Полный репозиторий
 
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      # 2. Установим необходимые пакеты
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            curl \
+            wget \
+            unzip \
+            bzip2 \
+            lzip \
+            gawk \
+            bc \
+            attr \
+            libncurses5-dev \
+            libssl-dev \
+            zlib1g-dev \
+            perl \
+            python3 \
+            automake \
+            autoconf \
+            libtool \
+            pkg-config \
+            file \
+            gperf \
+            patch \
+            xxd \
+            protobuf-c-compiler \
+            gettext \
+            sudo
 
-    - name: Enter SDK directory
-      run: cd keenetic-sdk
+      # 3. Перейдем в директорию SDK
+      - name: Enter SDK directory
+        run: |
+          cd keenetic-sdk
+          pwd
+          ls -la
 
-    - name: Prepare SDK environment
-      run: |
-        cd keenetic-sdk
-        # Обновляем конфигурацию, чтобы избежать "out of sync" ошибок
-        make defconfig
+      # 4. Синхронизируем конфигурацию (очистка предыдущих сборок)
+      - name: Prepare SDK
+        run: |
+          cd keenetic-sdk
+          make defconfig
 
-    - name: Build toolchain
-      run: |
-        cd keenetic-sdk
-        make toolchain V=s
+      # 5. Сборка toolchain
+      - name: Build toolchain
+        run: |
+          cd keenetic-sdk
+          make toolchain/install -j$(nproc)
 
-    - name: Build Huawei integration package
-      run: |
-        cd keenetic-sdk
-        make package/huawei-integration/compile V=s
+      # 6. Сборка пакета Huawei Integration
+      - name: Build Huawei Integration
+        run: |
+          cd keenetic-sdk
+          make package/huawei-integration/compile -j$(nproc)
 
-    - name: List generated packages
-      run: ls -l keenetic-sdk/bin/mt7621/packages
+      # 7. Показать содержимое артефактов
+      - name: List build artifacts
+        run: |
+          ls -la keenetic-sdk/bin/mt7621/packages
