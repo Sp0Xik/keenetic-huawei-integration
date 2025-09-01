@@ -95,8 +95,4 @@ jobs:
             Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers.
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
