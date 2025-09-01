@@ -1,5 +1,5 @@
 Keenetic Huawei Integration
-OPKG-пакет для интеграции роутеров Huawei (B636-336, B535-232a-LTE, B530-336, B320-323) с роутерами Keenetic (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) через Entware. Отображает все параметры мобильного подключения (RSRP, SINR, RSRQ, RSSI, Cell ID, PCI, Band, трафик и др.) через HiLink API в веб-интерфейсе Keenetic, с дизайном, идентичным встроенному 4G-модему. Модель определяется автоматически, логин/пароль вводятся через GUI.
+OPKG-пакет для интеграции роутеров Huawei (B636-336, B535-232a-LTE, B530-336, B320-323) с роутерами Keenetic (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) через Entware. Отображает все параметры мобильного подключения (RSRP, SINR, RSRQ, RSSI, Cell ID, PCI, Band, Bandwidth, Operator, MCC/MNC, Signal Level, Download/Upload Rate) через HiLink API в веб-интерфейсе Keenetic, с дизайном, идентичным встроенному 4G-модему. Модель определяется автоматически, логин/пароль вводятся через GUI.
 Поддерживаемые модели
 
 Huawei: B636-336, B535-232a-LTE, B530-336, B320-323.
@@ -8,7 +8,11 @@ Keenetic: Все модели на KeeneticOS 3.7+ с OPKG/Entware (KN-2311, KN-
 Установка
 
 Включите OPKG: "Настройки" → "Компоненты" → "Open Package support".
-Установите Entware на USB (EXT4/NTFS): opkg update && opkg install entware-opt.
+Установите Entware на USB (EXT4/NTFS):opkg update
+opkg install entware-opt luci-base uci lighttpd
+
+
+Убедитесь, что Huawei в bridge-режиме и доступен по IP (по умолчанию 192.168.8.1). Если заблокирован оператором, разблокируйте модем.
 Соберите пакет с Keenetic SDK (см. ниже).
 Установите: opkg install /path/to/huawei-integration_1.0-1_mipsel.ipk.
 Перезагрузите роутер или веб-сервер: /etc/init.d/lighttpd restart.
