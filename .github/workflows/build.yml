@@ -2,46 +2,61 @@ name: Build Keenetic SDK
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install build dependencies
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          build-essential git curl wget unzip bzip2 lzip patch perl python3 jq \
-          sed gawk bc tar autoconf automake libtool m4 findutils util-linux \
-          ncurses-dev libssl-dev zlib1g-dev pkg-config file
+          build-essential \
+          automake \
+          autoconf \
+          libtool \
+          gnu-findutils \
+          wget \
+          curl \
+          tar \
+          git \
+          pkg-config \
+          bc \
+          bison \
+          flex \
+          python3 \
+          python3-pip \
+          gawk \
+          sed \
+          flock
 
-    - name: Prepare Keenetic SDK
+    - name: Locate or prepare Keenetic SDK
       run: |
-        cd $GITHUB_WORKSPACE
-        # Убедимся, что SDK распакован и готов
-        if [ ! -d keenetic-sdk ]; then
-          echo "Keenetic SDK directory not found!"
+        # Проверяем, есть ли папка keenetic-sdk
+        if [ -d "$GITHUB_WORKSPACE/keenetic-sdk" ]; then
+          echo "Keenetic SDK found!"
+        elif [ -f "$GITHUB_WORKSPACE/keenetic-sdk.tar.gz" ]; then
+          echo "Extracting SDK archive..."
+          tar -xzf "$GITHUB_WORKSPACE/keenetic-sdk.tar.gz"
+        else
+          echo "Error: Keenetic SDK not found!"
           exit 1
         fi
-        cd keenetic-sdk
 
-    - name: Configure SDK
-      run: |
-        make menuconfig || make defconfig
+    - name: Enter SDK directory
+      working-directory: $GITHUB_WORKSPACE/keenetic-sdk
+      run: pwd
 
-    - name: Build SDK
+    - name: Configure and build SDK
+      working-directory: $GITHUB_WORKSPACE/keenetic-sdk
       run: |
-        cd keenetic-sdk
-        make -j$(nproc) package/huawei-integration/compile
-
-    - name: List built packages
-      run: |
-        cd keenetic-sdk/bin/mt7621/packages
-        ls -lh
+        make menuconfig || true
+        make defconfig
+        make toolchain/install -j$(nproc)
+        make -j$(nproc)
