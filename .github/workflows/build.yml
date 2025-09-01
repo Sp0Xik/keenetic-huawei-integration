@@ -11,54 +11,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Keenetic SDK
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y \
             build-essential git python3 attr bc curl gawk \
-            libhtml-parser-perl libjson-perl libncurses-dev \
-            libssl-dev libxml-libxml-perl subversion unzip \
-            zlib1g-dev make gcc lzip gperf protobuf-c-compiler \
-            flex bison util-linux
+            libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
+            libxml-libxml-perl subversion unzip zlib1g-dev make gcc \
+            lzip gperf protobuf-c-compiler flex bison util-linux sed
 
+      - name: Clone Keenetic SDK
+        run: |
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
           mkdir -p keenetic-sdk/package/huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" \
             -exec cp -r {} keenetic-sdk/package/huawei-integration/ \;
 
+      - name: Configure SDK for KN-2311
+        run: |
           cd keenetic-sdk
-
-          # Симлинк на flock для SDK
-          mkdir -p staging_dir/host/bin
-          ln -s $(which flock) staging_dir/host/bin/flock
-
-          echo "Listing available devices..."
-          ./configure.sh -l
-
-          echo "Running configure.sh for KN-2311..."
-          ./configure.sh KN-2311 || {
-            echo "configure.sh for KN-2311 failed, trying preset 'all'..."
-            ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
-          }
-
+          ./configure.sh KN-2311 || ./configure.sh -p all
           if [ ! -f .config ]; then
             echo ".config file not created!"
             exit 1
           fi
           echo ".config file created successfully"
 
-      - name: Build OPKG package
+      - name: Build toolchain
         run: |
           cd keenetic-sdk
-          echo "[*] Синхронизация .config..."
           make defconfig
-          echo "[*] Очистка пакета huawei-integration..."
+          make toolchain/install V=s
+
+      - name: Build Huawei Integration package
+        run: |
+          cd keenetic-sdk
           make package/huawei-integration/clean || true
-          echo "[*] Сборка пакета huawei-integration..."
           make package/huawei-integration/compile V=s
 
       - name: Upload artifact
@@ -67,7 +60,7 @@ jobs:
           name: huawei-integration
           path: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
 
-      - name: Create Release
+      - name: Create GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
@@ -76,8 +69,7 @@ jobs:
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers
-            (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
+            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers.
           draft: false
           prerelease: false
         env:
