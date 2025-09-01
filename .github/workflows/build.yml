@@ -26,7 +26,7 @@ jobs:
           echo "Listing available devices..."
           ./configure.sh -l
           echo "Running configure.sh for all..."
-          ./configure.sh -p all || {
+          ./configure.sh KN-2311 || {
             echo "configure.sh for all failed, trying preset 'all'..."
             ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
           }
