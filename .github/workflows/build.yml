@@ -27,17 +27,20 @@ jobs:
         run: |
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
 
-      - name: Copy package files into SDK
+      - name: Copy package into SDK
         run: |
           mkdir -p keenetic-sdk/package/huawei-integration/files
+          # Копируем Makefile пакета внутрь папки пакета
+          cp Makefile keenetic-sdk/package/huawei-integration/
+          # Копируем все файлы пакета
           cp -r files/* keenetic-sdk/package/huawei-integration/files/
-          echo "Package files structure:"
+          echo "Package structure:"
           tree -L 3 keenetic-sdk/package/huawei-integration
 
       - name: Configure SDK
         run: |
           cd keenetic-sdk
-          # Создаём ссылку на системный flock
+          # Создаём ссылку на системный flock для сборки
           mkdir -p staging_dir/host/bin
           ln -s /usr/bin/flock staging_dir/host/bin/flock
 
@@ -59,10 +62,10 @@ jobs:
       - name: Build toolchain and package
         run: |
           cd keenetic-sdk
-          echo "[*] Сборка toolchain..."
+          echo "[*] Building toolchain..."
           make toolchain/install -j1
 
-          echo "[*] Сборка пакета huawei-integration..."
+          echo "[*] Building package huawei-integration..."
           make package/huawei-integration/compile V=s
 
       - name: Verify artifact exists
@@ -89,8 +92,11 @@ jobs:
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
+            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers.
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
