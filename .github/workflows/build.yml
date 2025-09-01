@@ -21,18 +21,18 @@ jobs:
           sudo apt install -y build-essential git python3 attr bc curl gawk \
             libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
             libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf \
-            protobuf-c-compiler flex bison tree util-linux
+            protobuf-c-compiler flex bison util-linux tree
 
       - name: Clone Keenetic SDK
         run: |
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
 
-      - name: Copy package into SDK
+      - name: Prepare package in SDK
         run: |
           mkdir -p keenetic-sdk/package/huawei-integration/files
           # Копируем Makefile пакета внутрь папки пакета
           cp Makefile keenetic-sdk/package/huawei-integration/
-          # Копируем все файлы пакета
+          # Копируем файлы пакета
           cp -r files/* keenetic-sdk/package/huawei-integration/files/
           echo "Package structure:"
           tree -L 3 keenetic-sdk/package/huawei-integration
@@ -40,35 +40,46 @@ jobs:
       - name: Configure SDK
         run: |
           cd keenetic-sdk
-          # Создаём ссылку на системный flock для сборки
+          # Ссылка на системный flock для сборки
           mkdir -p staging_dir/host/bin
-          ln -s /usr/bin/flock staging_dir/host/bin/flock
+          ln -sf /usr/bin/flock staging_dir/host/bin/flock
 
           echo "Listing available devices..."
           ./configure.sh -l
 
           echo "Running configure.sh for KN-2311..."
           ./configure.sh KN-2311 || {
-            echo "configure.sh for KN-2311 failed, trying preset 'all'..."
-            ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
+            echo "Preset 'KN-2311' failed, trying 'all'..."
+            ./configure.sh -p all || { echo "Preset 'all' failed"; exit 1; }
           }
 
           if [ ! -f .config ]; then
-            echo ".config file not created!"
+            echo ".config not created!"
             exit 1
           fi
-          echo ".config file created successfully"
+          echo ".config created successfully"
 
-      - name: Build toolchain and package
+      - name: Sync SDK configuration
+        run: |
+          cd keenetic-sdk
+          echo "[*] Synchronizing .config..."
+          make defconfig
+
+      - name: Build toolchain
         run: |
           cd keenetic-sdk
           echo "[*] Building toolchain..."
           make toolchain/install -j1
 
-          echo "[*] Building package huawei-integration..."
+      - name: Build package
+        run: |
+          cd keenetic-sdk
+          echo "[*] Cleaning previous builds..."
+          make package/huawei-integration/clean || true
+          echo "[*] Building huawei-integration package..."
           make package/huawei-integration/compile V=s
 
-      - name: Verify artifact exists
+      - name: Verify artifact
         run: |
           ARTIFACT="keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk"
           if [ ! -f "$ARTIFACT" ]; then
