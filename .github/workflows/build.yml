@@ -17,7 +17,7 @@ jobs:
 
       - name: Set up Keenetic SDK
         run: |
-          git clone --depth 1 --branch master https://github.com/keenetic/keenetic-sdk.git
+          git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
           mkdir -p keenetic-sdk/package/keenetic-huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
