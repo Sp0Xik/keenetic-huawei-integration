@@ -22,9 +22,9 @@ jobs:
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler
+          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler flex bison
           echo "Running configure.sh..."
-          ./configure.sh --arch mipsel || { echo "configure.sh failed"; exit 1; }
+          ./configure.sh -p all || { echo "configure.sh failed"; exit 1; }
           if [ ! -f .config ]; then
             echo ".config file not created!"
             exit 1
