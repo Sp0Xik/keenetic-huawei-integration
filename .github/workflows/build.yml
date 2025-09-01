@@ -21,6 +21,8 @@ jobs:
           mkdir -p keenetic-sdk/package/keenetic-huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
+          mkdir -p package/libubox
+          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/libs/libubox/Makefile > package/libubox/Makefile
           mkdir -p package/uci
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/system/uci/Makefile > package/uci/Makefile
           sudo apt update
