@@ -6,6 +6,7 @@
 }
 .signal-table {
   width: 100%;
+  max-width: 600px;
   border-collapse: collapse;
   font-family: Arial, sans-serif;
   font-size: 14px;
@@ -52,4 +53,19 @@
   border: 1px solid #ccc;
   border-radius: 3px;
   width: 200px;
+}
+.signal-bars {
+  display: inline-block;
+  width: 60px;
+  height: 20px;
+  background: linear-gradient(to right, #ccc 0%, #ccc calc(20% * var(--bars)), #0066cc calc(20% * var(--bars)), #0066cc 100%);
+}
+@media (max-width: 600px) {
+  .signal-table th, .signal-table td {
+    display: block;
+    width: 100%;
+  }
+  .signal-table th {
+    background: #e8e8e8;
+  }
 }
