@@ -5,20 +5,45 @@ OPKG-пакет для интеграции роутеров Huawei (B636-336, B
 Huawei: B636-336, B535-232a-LTE, B530-336, B320-323.
 Keenetic: Все модели на KeeneticOS 3.7+ с OPKG/Entware (KN-2311, KN-2910, KN-4910, KN-2212).
 
+Скачивание готового пакета
+
+Перейдите в Releases.
+Скачайте последний файл huawei-integration_1.0-1_mipsel.ipk из раздела "Assets".
+Скопируйте .ipk на USB-накопитель или в /tmp на роутере Keenetic.
+
 Установка
 
-Включите OPKG: "Настройки" → "Компоненты" → "Open Package support".
-Установите Entware на USB (EXT4/NTFS):opkg update
+Подключите USB-накопитель (EXT4/NTFS) к Keenetic.
+Включите OPKG в веб-интерфейсе (my.keenetic.net):
+"Настройки" → "Компоненты" → "Open Package support" → "Применить".
+
+
+Установите Entware и зависимости через SSH:opkg update
 opkg install entware-opt luci-base uci lighttpd
 
 
 Убедитесь, что Huawei в bridge-режиме и доступен по IP (по умолчанию 192.168.8.1). Если заблокирован оператором, разблокируйте модем.
-Соберите пакет с Keenetic SDK (см. ниже).
-Установите: opkg install /path/to/huawei-integration_1.0-1_mipsel.ipk.
-Перезагрузите роутер или веб-сервер: /etc/init.d/lighttpd restart.
-В "Сеть" → "Huawei Integration" введите IP, логин и пароль Huawei.
+Установите пакет:/opt/bin/opkg install /tmp/huawei-integration_1.0-1_mipsel.ipk
+
+Или, если .ipk на USB:/opt/bin/opkg install /mnt/<usb>/huawei-integration_1.0-1_mipsel.ipk
+
+
+Перезагрузите веб-сервер:/etc/init.d/lighttpd restart
+
+Или роутер:reboot
+
+
 
 Использование
+
+GUI:
+Откройте веб-интерфейс (my.keenetic.net).
+Перейдите в "Сеть" → "Huawei Integration".
+Введите IP (обычно 192.168.8.1), логин и пароль Huawei (по умолчанию admin/admin).
+Нажмите "Сохранить".
+Просмотрите параметры (RSRP, SINR, RSRQ, RSSI, Cell ID, Band, трафик и др.) в таблице, обновляемой каждые 5 секунд.
+Используйте кнопки "Show Status" и "Reboot" для управления модемом.
+
 
 CLI:
 /opt/bin/huawei_signal signal — все параметры сигнала.
@@ -26,21 +51,35 @@ CLI:
 /opt/bin/huawei_signal reboot — перезагрузка модема.
 
 
-GUI: В "Сеть" → "Huawei Integration" введите логин/пароль, смотрите параметры (RSRP, SINR, RSRQ, RSSI, Cell ID, Band, трафик и др.) и управляйте модемом.
-Автозапуск: Логирует сигнал в /var/log/huawei_signal.log.
+Логи: Проверяйте ошибки в /var/log/huawei_signal.log.
 
-Сборка пакета
+Сборка из исходников (опционально)
 
-Установите Keenetic SDK: git clone https://github.com/keenetic/keenetic-sdk.
-Поместите репозиторий в package/ SDK.
-Выполните: make package/huawei-integration/compile V=s.
-Найдите .ipk в bin/packages.
+Установите Keenetic SDK:git clone https://github.com/keenetic/keenetic-sdk
+
+
+Поместите репозиторий в package/:git clone https://github.com/Sp0Xik/keenetic-huawei-integration keenetic-sdk/package/keenetic-huawei-integration
+
+
+Выполните:cd keenetic-sdk
+make package/huawei-integration/compile V=s
+
+
+Найдите .ipk в bin/packages/mipsel/.
 
 Адаптация
 
-Для новых моделей Huawei добавьте case в huawei_signal.sh.
+Для новых моделей Huawei добавьте case в files/huawei_signal.sh.
 Для кастомизации GUI измените /opt/lib/lua/luci/view/huawei/signal.htm или /opt/www/ndms/huawei.css.
-Тестируйте API: curl -s http://192.168.8.1/api/device/information -u admin:admin.
+Тестируйте API:curl -s http://192.168.8.1/api/device/information -u admin:admin
+
+
+
+Отладка
+
+Если в GUI ошибка "Failed to connect to Huawei modem", проверьте IP, логин, пароль.
+Если параметры не отображаются, смотрите /var/log/huawei_signal.log.
+Для Runner 4G (KN-2212) используйте USB для Entware (32 MB flash).
 
 Лицензия
 MIT
