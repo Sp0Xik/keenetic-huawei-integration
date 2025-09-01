@@ -4,16 +4,32 @@
 HUAWEI_IP=$(uci get huawei.config.ip 2>/dev/null || echo "192.168.8.1")
 USER=$(uci get huawei.config.username 2>/dev/null || echo "admin")
 PASS=$(uci get huawei.config.password 2>/dev/null || echo "admin")
+LOG_FILE="/var/log/huawei_signal.log"
 
 get_token() {
-  curl -s "http://${HUAWEI_IP}/api/webserver/SesTokInfo" -u "${USER}:${PASS}" | xmlstarlet sel -t -v "//TokInfo"
+  local response=$(curl -s "http://${HUAWEI_IP}/api/webserver/SesTokInfo" -u "${USER}:${PASS}")
+  if [ -z "$response" ]; then
+    echo "Error: Failed to get token from ${HUAWEI_IP}" >> $LOG_FILE
+    exit 1
+  fi
+  echo "$response" | xmlstarlet sel -t -v "//TokInfo"
 }
 
 get_model() {
-  curl -s "http://${HUAWEI_IP}/api/device/information" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}" | xmlstarlet sel -t -v "//DeviceName" | grep -o "B[0-9]\{3\}-[0-9]\{3\}"
+  local response=$(curl -s "http://${HUAWEI_IP}/api/device/information" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}")
+  if [ -z "$response" ]; then
+    echo "Error: Failed to get device info from ${HUAWEI_IP}" >> $LOG_FILE
+    echo "B636-336"  # Дефолт
+    return
+  fi
+  echo "$response" | xmlstarlet sel -t -v "//DeviceName" | grep -o "B[0-9]\{3\}-[0-9]\{3\}" || echo "B636-336"
 }
 
 TOKEN=$(get_token)
+if [ -z "$TOKEN" ]; then
+  echo "Error: Invalid token" >> $LOG_FILE
+  exit 1
+fi
 MODEL=$(get_model)
 
 case "$1" in
@@ -22,6 +38,10 @@ case "$1" in
     PLMN_DATA=$(curl -s "http://${HUAWEI_IP}/api/net/current-plmn" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}")
     STATUS_DATA=$(curl -s "http://${HUAWEI_IP}/api/monitoring/status" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}")
     TRAFFIC_DATA=$(curl -s "http://${HUAWEI_IP}/api/monitoring/traffic-statistics" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}")
+    if [ -z "$SIGNAL_DATA" ] || [ -z "$PLMN_DATA" ] || [ -z "$STATUS_DATA" ] || [ -z "$TRAFFIC_DATA" ]; then
+      echo "Error: Failed to fetch data from API" >> $LOG_FILE
+      exit 1
+    fi
     case "$MODEL" in
       B535-232|B530-336)
         echo "$SIGNAL_DATA" | xmlstarlet sel -t \
@@ -39,8 +59,8 @@ case "$1" in
         echo "$STATUS_DATA" | xmlstarlet sel -t \
           -v "//SignalIcon" -o "" -n
         echo "$TRAFFIC_DATA" | xmlstarlet sel -t \
-          -v "//CurrentDownloadRate" -o " bytes/s" -n \
-          -v "//CurrentUploadRate" -o " bytes/s" -n
+          -v "//CurrentDownloadRate" -o "" -n \
+          -v "//CurrentUploadRate" -o "" -n
         ;;
       B320-323)
         echo "$SIGNAL_DATA" | xmlstarlet sel -t \
@@ -56,8 +76,8 @@ case "$1" in
         echo "$STATUS_DATA" | xmlstarlet sel -t \
           -v "//SignalIcon" -o "" -n
         echo "$TRAFFIC_DATA" | xmlstarlet sel -t \
-          -v "//CurrentDownloadRate" -o " bytes/s" -n \
-          -v "//CurrentUploadRate" -o " bytes/s" -n
+          -v "//CurrentDownloadRate" -o "" -n \
+          -v "//CurrentUploadRate" -o "" -n
         ;;
       *)
         echo "$SIGNAL_DATA" | xmlstarlet sel -t \
@@ -73,16 +93,25 @@ case "$1" in
         echo "$STATUS_DATA" | xmlstarlet sel -t \
           -v "//SignalIcon" -o "" -n
         echo "$TRAFFIC_DATA" | xmlstarlet sel -t \
-          -v "//CurrentDownloadRate" -o " bytes/s" -n \
-          -v "//CurrentUploadRate" -o " bytes/s" -n
+          -v "//CurrentDownloadRate" -o "" -n \
+          -v "//CurrentUploadRate" -o "" -n
         ;;
     esac
     ;;
   status)
-    curl -s "http://${HUAWEI_IP}/api/monitoring/status" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}" | xmlstarlet sel -t -v "//ConnectionStatus"
+    local status=$(curl -s "http://${HUAWEI_IP}/api/monitoring/status" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}" | xmlstarlet sel -t -v "//ConnectionStatus")
+    if [ -z "$status" ]; then
+      echo "Error: Failed to get status" >> $LOG_FILE
+      exit 1
+    fi
+    echo "$status"
     ;;
   reboot)
-    curl -s -X POST "http://${HUAWEI_IP}/api/device/control" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}" -d '<request><Control>1</Control></request>'
+    local result=$(curl -s -X POST "http://${HUAWEI_IP}/api/device/control" -H "Cookie: SessionId=$TOKEN" -u "${USER}:${PASS}" -d '<request><Control>1</Control></request>')
+    if [ -z "$result" ]; then
+      echo "Error: Failed to reboot" >> $LOG_FILE
+      exit 1
+    fi
     ;;
   *)
     echo "Usage: $0 {signal|status|reboot}"
