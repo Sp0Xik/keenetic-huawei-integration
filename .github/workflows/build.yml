@@ -1,74 +1,47 @@
-name: Build Keenetic SDK Incremental Parallel
+name: Build Keenetic SDK
 
 on:
   push:
     branches:
       - main
   pull_request:
-    branches:
-      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        pkg: [ $(ls keenetic-sdk/package) ]  # Каждому пакету будет выделен отдельный поток
-
-    env:
-      KEENETIC_SDK_DIR: keenetic-sdk
-      TARGET: mt7621
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential git curl wget unzip bzip2 lzip patch perl python3 jq \
-            sed gawk bc tar autoconf automake libtool m4 findutils util-linux \
-            flock ncurses-dev libssl-dev zlib1g-dev pkg-config file
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential git curl wget unzip bzip2 lzip patch perl python3 jq \
+          sed gawk bc tar autoconf automake libtool m4 findutils util-linux \
+          ncurses-dev libssl-dev zlib1g-dev pkg-config file
 
-      - name: Enter Keenetic SDK
-        run: cd $KEENETIC_SDK_DIR
+    - name: Prepare Keenetic SDK
+      run: |
+        cd $GITHUB_WORKSPACE
+        # Убедимся, что SDK распакован и готов
+        if [ ! -d keenetic-sdk ]; then
+          echo "Keenetic SDK directory not found!"
+          exit 1
+        fi
+        cd keenetic-sdk
 
-      - name: Prepare SDK configuration
-        run: |
-          make defconfig
-          make oldconfig
+    - name: Configure SDK
+      run: |
+        make menuconfig || make defconfig
 
-      - name: Build toolchain if missing
-        run: |
-          if [ ! -f "staging_dir/host/bin/mipsel-linux-musl-gcc" ]; then
-            make toolchain/install
-          else
-            echo "Toolchain exists, skipping."
-          fi
+    - name: Build SDK
+      run: |
+        cd keenetic-sdk
+        make -j$(nproc) package/huawei-integration/compile
 
-      # ===== Parallel package build =====
-      - name: Build package ${{ matrix.pkg }} incrementally
-        run: |
-          PKG="${{ matrix.pkg }}"
-          PKG_FILES=$(git ls-files "package/$PKG" | sort)
-          PKG_SHA=$(echo "$PKG_FILES" | xargs sha1sum | sha1sum | cut -d' ' -f1)
-          PKG_CACHE_KEY="keenetic-${PKG}-${PKG_SHA}"
-
-          echo "Restoring cache for $PKG..."
-          if gh actions cache restore --key "$PKG_CACHE_KEY" --path "$KEENETIC_SDK_DIR/bin/$TARGET/packages"; then
-            echo "Cache hit for $PKG, skipping build."
-          else
-            echo "Cache miss for $PKG, building..."
-            make package/$PKG/compile
-
-            echo "Saving cache for $PKG..."
-            gh actions cache save --key "$PKG_CACHE_KEY" --path "$KEENETIC_SDK_DIR/bin/$TARGET/packages"
-          fi
-
-      # ===== Upload build artifacts =====
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: keenetic-sdk-artifacts
-          path: $KEENETIC_SDK_DIR/bin/$TARGET/packages/
+    - name: List built packages
+      run: |
+        cd keenetic-sdk/bin/mt7621/packages
+        ls -lh
