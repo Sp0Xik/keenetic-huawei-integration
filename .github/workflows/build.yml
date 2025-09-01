@@ -23,8 +23,10 @@ jobs:
           cd keenetic-sdk
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler flex bison
-          echo "Running configure.sh..."
-          ./configure.sh -p all || { echo "configure.sh failed"; exit 1; }
+          echo "Listing available devices..."
+          ./configure.sh -l
+          echo "Running configure.sh for kn-2311..."
+          ./configure.sh kn-2311 || { echo "configure.sh failed"; exit 1; }
           if [ ! -f .config ]; then
             echo ".config file not created!"
             exit 1
