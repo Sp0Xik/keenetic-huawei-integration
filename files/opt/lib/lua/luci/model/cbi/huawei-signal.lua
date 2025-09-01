@@ -9,19 +9,26 @@ s = m:section(NamedSection, "config", "huawei", "Huawei Modem Settings")
 s.anonymous = true
 
 ip = s:option(Value, "ip", "Huawei IP Address")
-ip.datatype = "ipaddr"
+ip.datatype = "ip4addr"
 ip.default = "192.168.8.1"
+ip.rmempty = false
 
 username = s:option(Value, "username", "Username")
 username.default = "admin"
+username.rmempty = false
 
 password = s:option(Value, "password", "Password")
 password.password = true
 password.default = "admin"
+password.rmempty = false
 
 -- Секция данных сигнала
 s2 = m:section(NamedSection, "signal", "huawei", "Signal Data")
 s2.anonymous = true
+
+error_msg = s2:option(DummyValue, "_error", "Status")
+error_msg.rawhtml = true
+error_msg.value = '<div id="error_msg" style="color:red;"></div>'
 
 val = s2:option(DummyValue, "_signal", "Signal Parameters")
 val.rawhtml = true
