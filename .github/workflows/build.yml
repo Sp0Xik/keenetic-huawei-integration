@@ -4,25 +4,18 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     env:
-      # Общие переменные окружения
-      PATH: ${{ github.workspace }}/keenetic-sdk/staging_dir/host/bin:$PATH
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
 
     steps:
-      # 1. Checkout репозитория
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Полный репозиторий
-
-      # 2. Установим необходимые пакеты
-      - name: Install dependencies
+      # 1. Установим базовые утилиты
+      - name: Install required packages
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -33,52 +26,50 @@ jobs:
             unzip \
             bzip2 \
             lzip \
-            gawk \
-            bc \
-            attr \
-            libncurses5-dev \
-            libssl-dev \
-            zlib1g-dev \
-            perl \
             python3 \
-            automake \
+            python3-pip \
             autoconf \
+            automake \
             libtool \
             pkg-config \
-            file \
-            gperf \
-            patch \
+            gawk \
+            sed \
+            tar \
+            bc \
             xxd \
-            protobuf-c-compiler \
+            attr \
+            gcc \
+            g++ \
+            flex \
+            bison \
             gettext \
-            sudo
+            curl \
+            jq \
+            gnu-findutils \
+            file \
+            libncurses5-dev \
+            zlib1g-dev \
+            libssl-dev \
+            flock \
+            protobuf-c-compiler
 
-      # 3. Перейдем в директорию SDK
-      - name: Enter SDK directory
+      # 2. Checkout репозитория
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 3. Переходим в каталог SDK
+      - name: Enter keenetic-sdk
         run: |
           cd keenetic-sdk
           pwd
-          ls -la
 
-      # 4. Синхронизируем конфигурацию (очистка предыдущих сборок)
-      - name: Prepare SDK
+      # 4. Сборка SDK
+      - name: Build Keenetic SDK
         run: |
           cd keenetic-sdk
+          # Синхронизация конфигурации
           make defconfig
-
-      # 5. Сборка toolchain
-      - name: Build toolchain
-        run: |
-          cd keenetic-sdk
-          make toolchain/install -j$(nproc)
-
-      # 6. Сборка пакета Huawei Integration
-      - name: Build Huawei Integration
-        run: |
-          cd keenetic-sdk
-          make package/huawei-integration/compile -j$(nproc)
-
-      # 7. Показать содержимое артефактов
-      - name: List build artifacts
-        run: |
-          ls -la keenetic-sdk/bin/mt7621/packages
+          # Установка toolchain
+          make toolchain/install
+          # Сборка пакета huawei-integration
+          make package/huawei-integration/compile
