@@ -1,0 +1,51 @@
+name: Build Keenetic Huawei Integration Package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Keenetic SDK
+        run: |
+          git clone https://github.com/keenetic/keenetic-sdk.git
+          mv keenetic-huawei-integration keenetic-sdk/package/
+          cd keenetic-sdk
+          sudo apt update
+          sudo apt install -y build-essential git python3
+
+      - name: Build OPKG package
+        run: |
+          cd keenetic-sdk
+          make package/huawei-integration/clean
+          make package/huawei-integration/compile V=s
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: huawei-integration
+          path: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
+
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          body: |
+            Auto-generated release for Huawei Integration OPKG package.
+            Download `huawei-integration_1.0-1_mipsel.ipk` below.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
