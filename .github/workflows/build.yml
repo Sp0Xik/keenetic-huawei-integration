@@ -18,10 +18,10 @@ jobs:
       - name: Set up Keenetic SDK
         run: |
           git clone https://github.com/keenetic/keenetic-sdk.git
-          mv keenetic-huawei-integration keenetic-sdk/package/
+          mv $(pwd) keenetic-sdk/package/keenetic-huawei-integration
           cd keenetic-sdk
           sudo apt update
-          sudo apt install -y build-essential git python3
+          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev
 
       - name: Build OPKG package
         run: |
@@ -44,7 +44,7 @@ jobs:
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` below.
+            Download `huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
           draft: false
           prerelease: false
         env:
