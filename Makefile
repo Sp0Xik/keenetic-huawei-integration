@@ -12,7 +12,7 @@ define Package/huawei-integration
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Huawei LTE API Integration for Keenetic
-  DEPENDS:=+curl +xmlstarlet +luci-base +uci
+  DEPENDS:=+curl +xmlstarlet +luci-base +uci +lighttpd
 endef
 
 define Package/huawei-integration/description
@@ -42,6 +42,9 @@ define Package/huawei-integration/install
   $(INSTALL_DATA) ./files/opt/lib/lua/luci/view/huawei/signal.htm $(1)/opt/lib/lua/luci/view/huawei/signal.htm
   $(INSTALL_DIR) $(1)/opt/www/ndms
   $(INSTALL_DATA) ./files/opt/www/ndms/huawei.css $(1)/opt/www/ndms/huawei.css
+  # Устанавливаем права для конфига
+  $(INSTALL_DIR) $(1)/opt/etc
+  $(INSTALL_CONF) ./files/opt/etc/config/huawei $(1)/opt/etc/config/huawei
 endef
 
 $(eval $(call BuildPackage,huawei-integration))
