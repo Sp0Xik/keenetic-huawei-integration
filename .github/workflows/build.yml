@@ -1,62 +1,68 @@
-name: Build Keenetic SDK
+name: Build Keenetic Huawei Integration Package
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          automake \
-          autoconf \
-          libtool \
-          gnu-findutils \
-          wget \
-          curl \
-          tar \
-          git \
-          pkg-config \
-          bc \
-          bison \
-          flex \
-          python3 \
-          python3-pip \
-          gawk \
-          sed \
-          flock
+      - name: Set up Keenetic SDK
+        run: |
+          git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
+          mkdir -p keenetic-sdk/package/keenetic-huawei-integration
+          find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
+          cd keenetic-sdk
+          mkdir -p package/uci
+          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/system/uci/Makefile > package/uci/Makefile
+          mkdir -p package/luci-base
+          curl -sL https://raw.githubusercontent.com/openwrt/luci/master/modules/luci-base/Makefile > package/luci-base/Makefile
+          sudo apt update
+          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler flex bison
+          echo "Listing available devices..."
+          ./configure.sh -l
+          echo "Running configure.sh for KN-2311..."
+          ./configure.sh KN-2311 || {
+            echo "configure.sh for KN-2311 failed, trying preset 'all'..."
+            ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
+          }
+          if [ ! -f .config ]; then
+            echo ".config file not created!"
+            exit 1
+          fi
+          echo ".config file created successfully"
 
-    - name: Locate or prepare Keenetic SDK
-      run: |
-        # Проверяем, есть ли папка keenetic-sdk
-        if [ -d "$GITHUB_WORKSPACE/keenetic-sdk" ]; then
-          echo "Keenetic SDK found!"
-        elif [ -f "$GITHUB_WORKSPACE/keenetic-sdk.tar.gz" ]; then
-          echo "Extracting SDK archive..."
-          tar -xzf "$GITHUB_WORKSPACE/keenetic-sdk.tar.gz"
-        else
-          echo "Error: Keenetic SDK not found!"
-          exit 1
-        fi
+      - name: Build OPKG package
+        run: |
+          cd keenetic-sdk
+          make package/huawei-integration/clean
+          make package/huawei-integration/compile V=s
 
-    - name: Enter SDK directory
-      working-directory: $GITHUB_WORKSPACE/keenetic-sdk
-      run: pwd
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: huawei-integration
+          path: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
 
-    - name: Configure and build SDK
-      working-directory: $GITHUB_WORKSPACE/keenetic-sdk
-      run: |
-        make menuconfig || true
-        make defconfig
-        make toolchain/install -j$(nproc)
-        make -j$(nproc)
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          body: |
+            Auto-generated release for Huawei Integration OPKG package.
+            Download `huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
