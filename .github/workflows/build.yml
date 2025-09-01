@@ -9,22 +9,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      PATH: ${{ github.workspace }}/keenetic-sdk/staging_dir/host/bin:$PATH
-
     steps:
+    - name: Install basic utilities
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          tar curl wget git build-essential bzip2 lzip bc \
+          python3 perl automake autoconf gperf libncurses5-dev libssl-dev \
+          pkg-config gawk gettext sed gawk findutils attr xxd libtool flex \
+          unzip
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential git curl wget unzip bzip2 lzip bc \
-          python3 perl automake autoconf gperf libncurses5-dev libssl-dev \
-          pkg-config gawk gettext sed gawk findutils attr xxd libtool flex
-
     - name: Enter SDK directory
       run: cd keenetic-sdk
+
+    - name: Prepare SDK environment
+      run: |
+        cd keenetic-sdk
+        # Обновляем конфигурацию, чтобы избежать "out of sync" ошибок
+        make defconfig
 
     - name: Build toolchain
       run: |
