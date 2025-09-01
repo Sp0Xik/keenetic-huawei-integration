@@ -12,7 +12,7 @@ define Package/huawei-integration
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Huawei Integration for Keenetic
-  DEPENDS:=+luci-base +uci +lighttpd
+  DEPENDS:=+uci +lighttpd
 endef
 
 define Package/huawei-integration/description
