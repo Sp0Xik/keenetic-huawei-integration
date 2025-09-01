@@ -1,17 +1,23 @@
-name: Build Keenetic Huawei Integration
+name: Build Keenetic SDK Incremental Parallel
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pkg: [ $(ls keenetic-sdk/package) ]  # Каждому пакету будет выделен отдельный поток
 
     env:
-      PATH: /usr/bin:$PATH
+      KEENETIC_SDK_DIR: keenetic-sdk
+      TARGET: mt7621
 
     steps:
       - name: Checkout repository
@@ -21,47 +27,48 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            git \
-            curl \
-            wget \
-            unzip \
-            bzip2 \
-            lzip \
-            patch \
-            perl \
-            python3 \
-            jq \
-            gnu-findutils \
-            flock \
-            sed \
-            ncurses-dev \
-            libssl-dev \
-            zlib1g-dev \
-            bc \
-            pkg-config
+            build-essential git curl wget unzip bzip2 lzip patch perl python3 jq \
+            sed gawk bc tar autoconf automake libtool m4 findutils util-linux \
+            flock ncurses-dev libssl-dev zlib1g-dev pkg-config file
 
-      - name: Setup Keenetic SDK
+      - name: Enter Keenetic SDK
+        run: cd $KEENETIC_SDK_DIR
+
+      - name: Prepare SDK configuration
         run: |
-          cd $GITHUB_WORKSPACE
-          if [ ! -d keenetic-sdk ]; then
-            echo "Keenetic SDK not found!"
-            exit 1
+          make defconfig
+          make oldconfig
+
+      - name: Build toolchain if missing
+        run: |
+          if [ ! -f "staging_dir/host/bin/mipsel-linux-musl-gcc" ]; then
+            make toolchain/install
+          else
+            echo "Toolchain exists, skipping."
           fi
 
-      - name: Build toolchain
+      # ===== Parallel package build =====
+      - name: Build package ${{ matrix.pkg }} incrementally
         run: |
-          cd keenetic-sdk
-          make toolchain/install
+          PKG="${{ matrix.pkg }}"
+          PKG_FILES=$(git ls-files "package/$PKG" | sort)
+          PKG_SHA=$(echo "$PKG_FILES" | xargs sha1sum | sha1sum | cut -d' ' -f1)
+          PKG_CACHE_KEY="keenetic-${PKG}-${PKG_SHA}"
 
-      - name: Build Huawei integration package
-        run: |
-          cd keenetic-sdk
-          make package/huawei-integration/compile
+          echo "Restoring cache for $PKG..."
+          if gh actions cache restore --key "$PKG_CACHE_KEY" --path "$KEENETIC_SDK_DIR/bin/$TARGET/packages"; then
+            echo "Cache hit for $PKG, skipping build."
+          else
+            echo "Cache miss for $PKG, building..."
+            make package/$PKG/compile
 
+            echo "Saving cache for $PKG..."
+            gh actions cache save --key "$PKG_CACHE_KEY" --path "$KEENETIC_SDK_DIR/bin/$TARGET/packages"
+          fi
+
+      # ===== Upload build artifacts =====
       - name: Upload build artifacts
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: keenetic-huawei-artifacts
-          path: keenetic-sdk/bin/mt7621/packages/
+          name: keenetic-sdk-artifacts
+          path: $KEENETIC_SDK_DIR/bin/$TARGET/packages/
