@@ -11,34 +11,37 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up dependencies and Keenetic SDK
+      - name: Install base dependencies
         run: |
           sudo apt update
           sudo apt install -y \
-            build-essential git python3 attr bc curl gawk \
-            libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
-            libxml-libxml-perl subversion unzip zlib1g-dev make gcc \
-            lzip gperf protobuf-c-compiler flex bison libtool automake \
-            util-linux autoconf pkg-config
+            build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl \
+            libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc \
+            lzip gperf protobuf-c-compiler flex bison util-linux sed automake autoconf
 
-          # Клонируем SDK
+      - name: Set up Keenetic SDK
+        run: |
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
-          
-          # Создаем пакет в правильной папке
           mkdir -p keenetic-sdk/package/huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" \
             -exec cp -r {} keenetic-sdk/package/huawei-integration/ \;
 
-          cd keenetic-sdk
+      - name: Fix missing flock for SDK
+        run: |
+          mkdir -p keenetic-sdk/staging_dir/host/bin
+          ln -s /usr/bin/flock keenetic-sdk/staging_dir/host/bin/flock
 
-          # Синхронизация конфигурации
+      - name: Configure SDK for KN-2311
+        run: |
+          cd keenetic-sdk
+          echo "Listing available devices..."
           ./configure.sh -l
-          ./configure.sh KN-2311 || ./configure.sh -p all || { echo "configure.sh failed"; exit 1; }
+          echo "Running configure.sh for KN-2311..."
+          ./configure.sh KN-2311 || ./configure.sh -p all
           if [ ! -f .config ]; then
             echo ".config file not created!"
             exit 1
