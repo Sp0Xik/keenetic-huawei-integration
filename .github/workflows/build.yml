@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,75 +19,47 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk \
+          sudo apt install -y \
+            build-essential git python3 attr bc curl gawk \
             libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
-            libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf \
-            protobuf-c-compiler flex bison util-linux tree
+            libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip \
+            gperf protobuf-c-compiler flex bison util-linux
 
-      - name: Clone Keenetic SDK
+      - name: Set up Keenetic SDK
         run: |
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
-
-      - name: Prepare package in SDK
-        run: |
-          mkdir -p keenetic-sdk/package/huawei-integration/files
-          # Копируем Makefile пакета внутрь папки пакета
-          cp Makefile keenetic-sdk/package/huawei-integration/
-          # Копируем файлы пакета
-          cp -r files/* keenetic-sdk/package/huawei-integration/files/
-          echo "Package structure:"
-          tree -L 3 keenetic-sdk/package/huawei-integration
-
-      - name: Configure SDK
-        run: |
+          mkdir -p keenetic-sdk/package/huawei-integration
+          # Копируем содержимое репозитория в папку пакета
+          find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" \
+            -exec cp -r {} keenetic-sdk/package/huawei-integration/ \;
           cd keenetic-sdk
-          # Ссылка на системный flock для сборки
-          mkdir -p staging_dir/host/bin
-          ln -sf /usr/bin/flock staging_dir/host/bin/flock
-
           echo "Listing available devices..."
           ./configure.sh -l
-
           echo "Running configure.sh for KN-2311..."
-          ./configure.sh KN-2311 || {
-            echo "Preset 'KN-2311' failed, trying 'all'..."
-            ./configure.sh -p all || { echo "Preset 'all' failed"; exit 1; }
-          }
-
+          ./configure.sh KN-2311 || ./configure.sh -p all
           if [ ! -f .config ]; then
-            echo ".config not created!"
+            echo ".config file not created!"
             exit 1
           fi
-          echo ".config created successfully"
+          echo ".config file created successfully"
 
-      - name: Sync SDK configuration
+      - name: Prepare host tools for SDK
+        run: |
+          cd keenetic-sdk
+          mkdir -p staging_dir/host/bin
+          for tool in sed flock cp mkdir chmod; do
+            ln -sf /usr/bin/$tool staging_dir/host/bin/$tool || ln -sf /bin/$tool staging_dir/host/bin/$tool
+          done
+
+      - name: Build OPKG package
         run: |
           cd keenetic-sdk
           echo "[*] Synchronizing .config..."
           make defconfig
-
-      - name: Build toolchain
-        run: |
-          cd keenetic-sdk
-          echo "[*] Building toolchain..."
-          make toolchain/install -j1
-
-      - name: Build package
-        run: |
-          cd keenetic-sdk
-          echo "[*] Cleaning previous builds..."
+          echo "[*] Cleaning huawei-integration package..."
           make package/huawei-integration/clean || true
-          echo "[*] Building huawei-integration package..."
+          echo "[*] Compiling huawei-integration package..."
           make package/huawei-integration/compile V=s
-
-      - name: Verify artifact
-        run: |
-          ARTIFACT="keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk"
-          if [ ! -f "$ARTIFACT" ]; then
-            echo "Error: artifact not found!"
-            exit 1
-          fi
-          ls -lh "$ARTIFACT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -103,7 +76,6 @@ jobs:
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers.
-          draft: false
-          prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }}
+            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers to integrate with Huawei routers.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
