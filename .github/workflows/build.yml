@@ -11,7 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,45 +19,49 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-            build-essential git python3 attr bc curl gawk \
-            libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
-            libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip \
-            gperf protobuf-c-compiler flex bison util-linux
+            build-essential git python3 attr bc curl gawk libhtml-parser-perl \
+            libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion \
+            unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler flex bison \
+            util-linux sed
 
       - name: Set up Keenetic SDK
         run: |
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
+          # Копируем файлы пакета в папку SDK
           mkdir -p keenetic-sdk/package/huawei-integration
-          # Копируем содержимое репозитория в папку пакета
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" \
             -exec cp -r {} keenetic-sdk/package/huawei-integration/ \;
-          cd keenetic-sdk
-          echo "Listing available devices..."
-          ./configure.sh -l
-          echo "Running configure.sh for KN-2311..."
-          ./configure.sh KN-2311 || ./configure.sh -p all
-          if [ ! -f .config ]; then
-            echo ".config file not created!"
-            exit 1
-          fi
-          echo ".config file created successfully"
 
-      - name: Prepare host tools for SDK
+      - name: Configure SDK
         run: |
           cd keenetic-sdk
-          mkdir -p staging_dir/host/bin
-          for tool in sed flock cp mkdir chmod; do
-            ln -sf /usr/bin/$tool staging_dir/host/bin/$tool || ln -sf /bin/$tool staging_dir/host/bin/$tool
-          done
+          ./configure.sh -l
+          ./configure.sh KN-2311 || ./configure.sh -p all
+          if [ ! -f .config ]; then
+            echo ".config not created"
+            exit 1
+          fi
+          echo ".config created"
+
+      - name: Build toolchain
+        run: |
+          cd keenetic-sdk
+          make toolchain/install V=s || { echo "Toolchain build failed"; exit 1; }
+
+      - name: Verify cross-compiler
+        run: |
+          cd keenetic-sdk
+          if [ ! -x staging_dir/host/bin/mipsel-ndms-linux-musl-gcc ]; then
+            echo "Error: cross-compiler not found!"
+            ls -l staging_dir/host/bin/
+            exit 1
+          fi
+          echo "Cross-compiler found: $(staging_dir/host/bin/mipsel-ndms-linux-musl-gcc --version)"
 
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
-          echo "[*] Synchronizing .config..."
-          make defconfig
-          echo "[*] Cleaning huawei-integration package..."
           make package/huawei-integration/clean || true
-          echo "[*] Compiling huawei-integration package..."
           make package/huawei-integration/compile V=s
 
       - name: Upload artifact
@@ -76,6 +79,8 @@ jobs:
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers to integrate with Huawei routers.
+            Download `huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
