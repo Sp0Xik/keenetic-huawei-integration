@@ -10,33 +10,35 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up dependencies and Keenetic SDK
         run: |
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk \
-            libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev \
-            make gcc lzip gperf protobuf-c-compiler flex bison util-linux automake1.9 libtool
+          sudo apt install -y \
+            build-essential git python3 attr bc curl gawk \
+            libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
+            libxml-libxml-perl subversion unzip zlib1g-dev make gcc \
+            lzip gperf protobuf-c-compiler flex bison libtool automake \
+            util-linux autoconf pkg-config
 
-      - name: Set up Keenetic SDK
-        run: |
+          # Клонируем SDK
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
+          
+          # Создаем пакет в правильной папке
           mkdir -p keenetic-sdk/package/huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" \
             -exec cp -r {} keenetic-sdk/package/huawei-integration/ \;
+
           cd keenetic-sdk
-          echo "Listing available devices..."
+
+          # Синхронизация конфигурации
           ./configure.sh -l
-          echo "Running configure.sh for KN-2311..."
-          ./configure.sh KN-2311 || {
-            echo "configure.sh for KN-2311 failed, trying preset 'all'..."
-            ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
-          }
+          ./configure.sh KN-2311 || ./configure.sh -p all || { echo "configure.sh failed"; exit 1; }
           if [ ! -f .config ]; then
             echo ".config file not created!"
             exit 1
@@ -46,11 +48,8 @@ jobs:
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
-          echo "[*] Синхронизация .config..."
           make defconfig
-          echo "[*] Очистка пакета huawei-integration..."
           make package/huawei-integration/clean || true
-          echo "[*] Сборка пакета huawei-integration..."
           make package/huawei-integration/compile V=s
 
       - name: Upload artifact
