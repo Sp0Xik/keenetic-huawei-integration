@@ -11,7 +11,7 @@ Keenetic Huawei Integration
 Подключите USB-накопитель (EXT4/NTFS) к Keenetic.
 Включите OPKG в веб-интерфейсе (my.keenetic.net → "Настройки" → "Компоненты" → "Open Package support").
 Установите зависимости через SSH:opkg update
-opkg install entware-opt luci-base uci lighttpd
+opkg install entware-opt uci lighttpd
 
 
 Убедитесь, что Huawei в bridge-режиме и доступен по IP (по умолчанию 192.168.8.1).
