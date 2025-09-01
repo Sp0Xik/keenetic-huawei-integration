@@ -1,14 +1,16 @@
-name: Build Keenetic SDK
+name: Build Keenetic Huawei Integration
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+
+    env:
+      PATH: ${{ github.workspace }}/keenetic-sdk/staging_dir/host/bin:$PATH
 
     steps:
     - name: Checkout repository
@@ -16,58 +18,23 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt update
-        sudo apt install -y \
-          build-essential \
-          git \
-          curl \
-          unzip \
-          bzip2 \
-          lzip \
-          ncurses-dev \
-          libssl-dev \
-          libncurses5-dev \
-          gawk \
-          attr \
-          bc \
-          file \
-          pkg-config \
-          python3 \
-          perl \
-          automake \
-          autoconf \
-          libtool \
-          gettext \
-          curl \
-          jq \
-          xxd \
-          sudo \
-          libz-dev \
-          flex \
-          bison \
-          rsync \
-          subversion \
-          unzip \
-          wget \
-          gperf
+        sudo apt-get update
+        sudo apt-get install -y build-essential git curl wget unzip bzip2 lzip bc \
+          python3 perl automake autoconf gperf libncurses5-dev libssl-dev \
+          pkg-config gawk gettext sed gawk findutils attr xxd libtool flex
 
-    - name: Fix host binaries for SDK
-      run: |
-        mkdir -p keenetic-sdk/staging_dir/host/bin
-        ln -s /usr/bin/flock keenetic-sdk/staging_dir/host/bin/flock
-        ln -s /usr/bin/sed keenetic-sdk/staging_dir/host/bin/sed
-        ln -s /usr/bin/mkdir keenetic-sdk/staging_dir/host/bin/mkdir
+    - name: Enter SDK directory
+      run: cd keenetic-sdk
 
     - name: Build toolchain
       run: |
         cd keenetic-sdk
-        make toolchain/install V=s
-
-    - name: Verify cross-compiler
-      run: |
-        ls -l staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-ndms-linux-musl-gcc
+        make toolchain V=s
 
     - name: Build Huawei integration package
       run: |
         cd keenetic-sdk
         make package/huawei-integration/compile V=s
+
+    - name: List generated packages
+      run: ls -l keenetic-sdk/bin/mt7621/packages
