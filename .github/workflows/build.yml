@@ -23,6 +23,7 @@ jobs:
           cd keenetic-sdk
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler
+          ./configure.sh --arch mipsel
 
       - name: Build OPKG package
         run: |
