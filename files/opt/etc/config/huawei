@@ -1,3 +1,4 @@
+# Конфигурация Huawei (IP, логин, пароль). Пароль хранится в открытом виде, используйте сложный пароль!
 config huawei 'config'
   option ip '192.168.8.1'
   option username 'admin'
