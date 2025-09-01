@@ -15,13 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Keenetic SDK
+      - name: Set up dependencies and Keenetic SDK
         run: |
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk \
+          sudo apt install -y \
+            build-essential git python3 attr bc curl gawk \
             libhtml-parser-perl libjson-perl libncurses-dev libssl-dev \
             libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip \
-            gperf protobuf-c-compiler flex bison util-linux sed
+            gperf protobuf-c-compiler flex bison util-linux
 
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
           mkdir -p keenetic-sdk/package/huawei-integration
@@ -29,25 +30,33 @@ jobs:
             -exec cp -r {} keenetic-sdk/package/huawei-integration/ \;
 
           cd keenetic-sdk
-          echo "Listing available devices..."
+
+          echo "[*] Listing available devices..."
           ./configure.sh -l
 
-          echo "Running configure.sh for KN-2311..."
+          echo "[*] Running configure.sh for KN-2311..."
           ./configure.sh KN-2311 || {
-            echo "configure.sh for KN-2311 failed, trying preset 'all'..."
-            ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
+            echo "[!] configure.sh failed, trying preset 'all'..."
+            ./configure.sh -p all || { echo "[!] configure.sh with preset 'all' failed"; exit 1; }
           }
 
-          echo "[*] Syncing .config..."
-          make defconfig
-          echo ".config file created and synced successfully"
+          if [ ! -f .config ]; then
+            echo "[!] .config file not created!"
+            exit 1
+          fi
+
+          echo "[*] .config file created successfully"
 
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
-          echo "[*] Cleaning huawei-integration package..."
+          echo "[*] Synchronizing .config..."
+          make defconfig
+
+          echo "[*] Cleaning package..."
           make package/huawei-integration/clean || true
-          echo "[*] Building huawei-integration package..."
+
+          echo "[*] Compiling package..."
           make package/huawei-integration/compile V=s
 
       - name: Upload artifact
@@ -65,9 +74,7 @@ jobs:
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers to integrate with Huawei routers.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+            Download `huawei-integration_1.0-1_mipsel.ipk` for Keenetic routers
+            to integrate with Huawei routers.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
