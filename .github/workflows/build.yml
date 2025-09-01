@@ -17,18 +17,20 @@ jobs:
 
       - name: Set up Keenetic SDK
         run: |
-          git clone https://github.com/keenetic/keenetic-sdk.git
+          git clone --depth 1 --branch 3.07.C.4.0-2 https://github.com/keenetic/keenetic-sdk.git
           mkdir -p keenetic-sdk/package/keenetic-huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler xmlstarlet
+          # Verify xmlstarlet installation
+          xmlstarlet --version || { echo "xmlstarlet installation failed"; exit 1; }
 
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
-          make package/huawei-integration/clean
-          make package/huawei-integration/compile V=s
+          make package/huawei-integration/clean FORCE=1
+          make package/huawei-integration/compile V=s FORCE=1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
