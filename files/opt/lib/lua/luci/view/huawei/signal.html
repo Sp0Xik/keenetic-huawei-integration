@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><%+header%>
+<%+header%>
 <link rel="stylesheet" href="/ndms/huawei.css">
 <h2><%:Huawei LTE Signal%></h2>
 <div class="cbi-map" id="cbi-huawei">
@@ -57,8 +18,8 @@
         <tr><th>Operator</th><td id="operator">-</td></tr>
         <tr><th>MCC/MNC</th><td id="mccmnc">-</td></tr>
         <tr><th>Signal Level</th><td id="signal_icon">-</td></tr>
-        <tr><th>Download Rate (bytes/s)</th><td id="download_rate">-</td></tr>
-        <tr><th>Upload Rate (bytes/s)</th><td id="upload_rate">-</td></tr>
+        <tr><th>Download Rate (KB/s)</th><td id="download_rate">-</td></tr>
+        <tr><th>Upload Rate (KB/s)</th><td id="upload_rate">-</td></tr>
       </table>
     </div>
   </fieldset>
@@ -68,6 +29,11 @@
     fetch('/cgi-bin/luci/admin/network/huawei/signal_data')
       .then(response => response.json())
       .then(data => {
+        if (data.error) {
+          document.getElementById('error_msg').innerText = data.error;
+          return;
+        }
+        document.getElementById('error_msg').innerText = '';
         document.getElementById('rsrp').innerText = data.rsrp || '-';
         document.getElementById('sinr').innerText = data.sinr || '-';
         document.getElementById('rsrq').innerText = data.rsrq || '-';
@@ -78,11 +44,13 @@
         document.getElementById('dlbandwidth').innerText = data.dlbandwidth || '-';
         document.getElementById('operator').innerText = data.operator || '-';
         document.getElementById('mccmnc').innerText = data.mccmnc || '-';
-        document.getElementById('signal_icon').innerText = data.signal_icon || '-';
+        const signalIcon = data.signal_icon || '0';
+        document.getElementById('signal_icon').innerHTML = '<span class="signal-bars" style="--bars:' + signalIcon + '"></span>';
         document.getElementById('download_rate').innerText = data.download_rate || '-';
         document.getElementById('upload_rate').innerText = data.upload_rate || '-';
       })
       .catch(() => {
+        document.getElementById('error_msg').innerText = 'Failed to connect to Huawei modem';
         document.getElementById('rsrp').innerText = '-';
         document.getElementById('sinr').innerText = '-';
         document.getElementById('rsrq').innerText = '-';
