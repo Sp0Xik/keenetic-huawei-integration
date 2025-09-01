@@ -3,7 +3,8 @@
 START=99
 
 start() {
-  /opt/bin/huawei_signal signal > /var/log/huawei_signal.log
+  mkdir -p /var/log
+  /opt/bin/huawei_signal signal > /var/log/huawei_signal.log 2>&1
 }
 
 stop() {
