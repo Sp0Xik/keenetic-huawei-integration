@@ -23,8 +23,6 @@ jobs:
           cd keenetic-sdk
           mkdir -p package/uci
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/system/uci/Makefile > package/uci/Makefile
-          mkdir -p package/luci-base
-          curl -sL https://raw.githubusercontent.com/openwrt/luci/master/modules/luci-base/Makefile > package/luci-base/Makefile
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler flex bison
           echo "Listing available devices..."
