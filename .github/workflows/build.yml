@@ -2,72 +2,66 @@ name: Build Keenetic Huawei Integration
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      PATH: /usr/bin:$PATH
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          git \
-          curl \
-          wget \
-          unzip \
-          bzip2 \
-          lzip \
-          python3 \
-          python3-pip \
-          autoconf \
-          automake \
-          libtool \
-          pkg-config \
-          gawk \
-          sed \
-          tar \
-          bc \
-          xxd \
-          attr \
-          gcc \
-          g++ \
-          flex \
-          bison \
-          gettext \
-          jq \
-          findutils \
-          file \
-          libncurses5-dev \
-          zlib1g-dev \
-          libssl-dev \
-          util-linux \
-          protobuf-c-compiler
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            curl \
+            wget \
+            unzip \
+            bzip2 \
+            lzip \
+            patch \
+            perl \
+            python3 \
+            jq \
+            gnu-findutils \
+            flock \
+            sed \
+            ncurses-dev \
+            libssl-dev \
+            zlib1g-dev \
+            bc \
+            pkg-config
 
-    - name: Prepare Keenetic SDK
-      run: |
-        cd $GITHUB_WORKSPACE
-        if [ ! -d "keenetic-sdk" ]; then
-          echo "Error: keenetic-sdk directory not found"
-          exit 1
-        fi
+      - name: Setup Keenetic SDK
+        run: |
+          cd $GITHUB_WORKSPACE
+          if [ ! -d keenetic-sdk ]; then
+            echo "Keenetic SDK not found!"
+            exit 1
+          fi
 
-    - name: Build Keenetic Huawei Integration
-      run: |
-        cd keenetic-sdk
-        make toolchain/install
-        make package/huawei-integration/compile
+      - name: Build toolchain
+        run: |
+          cd keenetic-sdk
+          make toolchain/install
 
-    - name: Archive build artifacts
-      if: success()
-      uses: actions/upload-artifact@v3
-      with:
-        name: keenetic-huawei-artifacts
-        path: keenetic-sdk/bin/mt7621/packages/
+      - name: Build Huawei integration package
+        run: |
+          cd keenetic-sdk
+          make package/huawei-integration/compile
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keenetic-huawei-artifacts
+          path: keenetic-sdk/bin/mt7621/packages/
