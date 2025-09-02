@@ -80,16 +80,23 @@ jobs:
           make tools/install V=s 2>&1 | tee tools_install.log || { echo "make tools/install failed, see tools_install.log"; cat tools_install.log; exit 1; }
           echo "Building toolchain..."
           make toolchain/install V=s 2>&1 | tee toolchain_install.log || { echo "make toolchain/install failed, see toolchain_install.log"; cat toolchain_install.log; exit 1; }
-          echo "Listing contents of staging_dir/toolchain-mipsel-linux-musl_musl/bin to verify compiler..."
-          ls -l staging_dir/toolchain-mipsel-linux-musl_musl/bin/ || { echo "toolchain directory not found"; ls -R staging_dir/ || true; exit 1; }
+          echo "Listing contents of staging_dir/toolchain-mipsel-linux-musl/bin to verify compiler..."
+          ls -l staging_dir/toolchain-mipsel-linux-musl/bin/ || { 
+            echo "toolchain directory not found"
+            echo "Listing all staging_dir contents for debugging..."
+            ls -R staging_dir/ || true
+            echo "Checking for alternative toolchain directories..."
+            find staging_dir/ -type d -name "toolchain*" || true
+            exit 1
+          }
           echo "Listing contents of staging_dir/host/bin..."
           ls -l staging_dir/host/bin/
           echo "Checking for mipsel compiler..."
-          if [ -f staging_dir/toolchain-mipsel-linux-musl_musl/bin/mipsel-linux-musl-gcc ]; then
+          if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-linux-musl-gcc ]; then
             echo "mipsel-linux-musl-gcc found"
           else
             echo "mipsel-linux-musl-gcc NOT found, exiting..."
-            ls -R staging_dir/toolchain-mipsel-linux-musl_musl/ || true
+            ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
             exit 1
           fi
 
