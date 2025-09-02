@@ -54,7 +54,7 @@ jobs:
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
-          make package/huawei-integration/clean
+          make package/huawei-integration/clean V=s
           make package/huawei-integration/compile V=s
 
       - name: Upload artifact
