@@ -23,6 +23,8 @@ jobs:
           cd keenetic-sdk
           mkdir -p package/libjson-c
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/libs/libjson-c/Makefile > package/libjson-c/Makefile
+          mkdir -p package/libjson-c/patches
+          curl -sL https://raw.githubusercontent.com/Sp0Xik/keenetic-huawei-integration/main/patches/001-disable-doc-subdirectory.patch > package/libjson-c/patches/001-disable-doc-subdirectory.patch
           mkdir -p package/lua
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/utils/lua/Makefile > package/lua/Makefile
           mkdir -p package/libubox
@@ -30,7 +32,7 @@ jobs:
           mkdir -p package/uci
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/system/uci/Makefile > package/uci/Makefile
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools binutils
+          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools binutils patch
           echo "Checking if flock is installed..."
           if command -v flock >/dev/null 2>&1; then
             echo "flock found at $(which flock)"
@@ -105,7 +107,7 @@ jobs:
             echo "mipsel-linux-musl-gcc found"
           else
             echo "mipsel-linux-musl-gcc NOT found, checking for mipsel-ndms-linux-musl-gcc..."
-            if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
+            if [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
               echo "mipsel-ndms-linux-musl-gcc found"
             else
               echo "No mipsel compiler found, exiting..."
@@ -129,6 +131,8 @@ jobs:
             echo "Makefile NOT found in package/keenetic-huawei-integration"
             exit 1
           fi
+          echo "Listing contents of package/libjson-c:"
+          ls -R package/libjson-c/
           echo "Listing contents of staging_dir/host/bin:"
           ls -l staging_dir/host/bin/
 
