@@ -54,25 +54,25 @@ jobs:
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
-          make package/huawei-integration/clean V=s
-          make package/huawei-integration/compile V=s
+          make package/keenetic-huawei-integration/clean V=s
+          make package/keenetic-huawei-integration/compile V=s
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: huawei-integration
-          path: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
+          path: keenetic-sdk/bin/packages/mipsel/keenetic-huawei-integration_1.0-1_mipsel.ipk
 
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          files: keenetic-sdk/bin/packages/mipsel/huawei-integration_1.0-1_mipsel.ipk
+          files: keenetic-sdk/bin/packages/mipsel/keenetic-huawei-integration_1.0-1_mipsel.ipk
           tag_name: v1.0.${{ github.run_number }}
           name: Release v1.0.${{ github.run_number }}
           body: |
             Auto-generated release for Huawei Integration OPKG package.
-            Download `huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
+            Download `keenetic-huawei-integration_1.0-1_mipsel.ipk` below for Keenetic routers (Hero 4G+, Skipper 4G, Explorer 4G, Runner 4G) to integrate with Huawei routers (B636-336, B535-232a-LTE, B530-336, B320-323).
           draft: false
           prerelease: false
         env:
