@@ -76,6 +76,7 @@ jobs:
           echo "CONFIG_GCC_VERSION=\"12.3.0\"" >> .config
           echo "CONFIG_TARGET_mipsel=y" >> .config
           echo "CONFIG_TARGET_SUBARCH=\"mipsel_24kc\"" >> .config
+          echo "CONFIG_CROSS_COMPILER_PREFIX=\"mipsel-ndms-linux-musl-\"" >> .config
           cat .config
           echo "Running make oldconfig to sync configuration..."
           make oldconfig
