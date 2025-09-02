@@ -76,6 +76,8 @@ jobs:
       - name: Build toolchain
         run: |
           cd keenetic-sdk
+          echo "Cleaning toolchain..."
+          make toolchain/clean V=s 2>&1 | tee toolchain_clean.log || { echo "make toolchain/clean failed, see toolchain_clean.log"; cat toolchain_clean.log; exit 1; }
           echo "Building tools..."
           make tools/install V=s 2>&1 | tee tools_install.log || { echo "make tools/install failed, see tools_install.log"; cat tools_install.log; exit 1; }
           echo "Building toolchain..."
@@ -87,6 +89,8 @@ jobs:
             ls -R staging_dir/ || true
             echo "Checking for alternative toolchain directories..."
             find staging_dir/ -type d -name "toolchain*" || true
+            echo "Listing contents of build_dir for debugging..."
+            ls -R build_dir/ || true
             exit 1
           }
           echo "Listing contents of staging_dir/host/bin..."
