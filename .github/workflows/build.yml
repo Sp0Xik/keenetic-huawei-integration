@@ -30,7 +30,7 @@ jobs:
           mkdir -p package/uci
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/system/uci/Makefile > package/uci/Makefile
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools
+          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools binutils
           echo "Checking if flock is installed..."
           if command -v flock >/dev/null 2>&1; then
             echo "flock found at $(which flock)"
@@ -64,6 +64,11 @@ jobs:
           echo ".config file created successfully"
           echo "Checking .config for mipsel architecture..."
           grep -E 'CONFIG_TARGET_mipsel|CONFIG_ARCH="mipsel"' .config || echo "No mipsel configuration found in .config"
+          echo "Ensuring toolchain configuration in .config..."
+          echo "CONFIG_TOOLCHAINOPTS=y" >> .config
+          echo "CONFIG_GCC=y" >> .config
+          echo "CONFIG_BINUTILS=y" >> .config
+          echo "CONFIG_MUSL=y" >> .config
           cat .config
           echo "Running make oldconfig to sync configuration..."
           make oldconfig
@@ -99,9 +104,14 @@ jobs:
           if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-linux-musl-gcc ]; then
             echo "mipsel-linux-musl-gcc found"
           else
-            echo "mipsel-linux-musl-gcc NOT found, exiting..."
-            ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
-            exit 1
+            echo "mipsel-linux-musl-gcc NOT found, checking for mipsel-ndms-linux-musl-gcc..."
+            if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
+              echo "mipsel-ndms-linux-musl-gcc found"
+            else
+              echo "No mipsel compiler found, exiting..."
+              ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
+              exit 1
+            fi
           fi
 
       - name: Debug directory contents
