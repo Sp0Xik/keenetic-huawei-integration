@@ -22,27 +22,30 @@ jobs:
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
           mkdir -p package/libjson-c
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/libs/libjson-c/Makefile > package/libjson-c/Makefile
+          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/libs/libjson-c/Makefile > package/libjson-c/Makefile
           mkdir -p package/lua
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/utils/lua/Makefile > package/lua/Makefile
+          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/utils/lua/Makefile > package/lua/Makefile
           mkdir -p package/libubox
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/libs/libubox/Makefile > package/libubox/Makefile
+          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/libs/libubox/Makefile > package/libubox/Makefile
           mkdir -p package/uci
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/main/package/system/uci/Makefile > package/uci/Makefile
+          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/system/uci/Makefile > package/uci/Makefile
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc lzip gperf protobuf-c-compiler flex bison util-linux
           echo "Listing available devices..."
           ./configure.sh -l
           echo "Running configure.sh for KN-2311..."
-          ./configure.sh KN-2311 || {
-            echo "configure.sh for KN-2311 failed, trying preset 'all'..."
-            ./configure.sh -p all || { echo "configure.sh with preset 'all' failed"; exit 1; }
+          ./configure.sh KN-2311 > configure.log 2>&1 || {
+            echo "configure.sh for KN-2311 failed, see configure.log"
+            cat configure.log
+            echo "Trying preset 'all'..."
+            ./configure.sh -p all > configure_all.log 2>&1 || { echo "configure.sh with preset 'all' failed"; cat configure_all.log; exit 1; }
           }
           if [ ! -f .config ]; then
             echo ".config file not created!"
             exit 1
           fi
           echo ".config file created successfully"
+          cat .config
           echo "Running make oldconfig to sync configuration..."
           make oldconfig
           if [ $? -ne 0 ]; then
@@ -50,6 +53,31 @@ jobs:
             exit 1
           fi
           echo "make oldconfig completed successfully"
+          echo "Checking for flock in staging_dir..."
+          if [ -f staging_dir/host/bin/flock ]; then
+            echo "flock found in staging_dir/host/bin/"
+          else
+            echo "flock NOT found in staging_dir/host/bin/, installing..."
+            sudo cp /usr/bin/flock staging_dir/host/bin/ || { echo "Failed to copy flock"; exit 1; }
+          fi
+
+      - name: Debug directory contents
+        run: |
+          cd keenetic-sdk
+          echo "Listing contents of package directory:"
+          ls -R package/
+          echo "Listing contents of package/keenetic-huawei-integration:"
+          ls -R package/keenetic-huawei-integration/
+          echo "Checking Makefile existence:"
+          if [ -f package/keenetic-huawei-integration/Makefile ]; then
+            echo "Makefile found in package/keenetic-huawei-integration"
+            cat package/keenetic-huawei-integration/Makefile
+          else
+            echo "Makefile NOT found in package/keenetic-huawei-integration"
+            exit 1
+          fi
+          echo "Listing contents of staging_dir/host/bin:"
+          ls -l staging_dir/host/bin/
 
       - name: Build OPKG package
         run: |
@@ -60,7 +88,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: huawei-integration
+          name: keenetic-huawei-integration
           path: keenetic-sdk/bin/packages/mipsel/keenetic-huawei-integration_1.0-1_mipsel.ipk
 
       - name: Create Release
