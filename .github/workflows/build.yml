@@ -43,6 +43,13 @@ jobs:
             exit 1
           fi
           echo ".config file created successfully"
+          echo "Running make oldconfig to sync configuration..."
+          make oldconfig
+          if [ $? -ne 0 ]; then
+            echo "make oldconfig failed!"
+            exit 1
+          fi
+          echo "make oldconfig completed successfully"
 
       - name: Build OPKG package
         run: |
