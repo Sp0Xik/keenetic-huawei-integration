@@ -71,6 +71,7 @@ jobs:
           echo "CONFIG_GCC=y" >> .config
           echo "CONFIG_BINUTILS=y" >> .config
           echo "CONFIG_MUSL=y" >> .config
+          echo "CONFIG_GCC_VERSION=\"12.3.0\"" >> .config
           cat .config
           echo "Running make oldconfig to sync configuration..."
           make oldconfig
@@ -79,6 +80,13 @@ jobs:
             exit 1
           fi
           echo "make oldconfig completed successfully"
+
+      - name: Patch fortify-headers download
+        run: |
+          cd keenetic-sdk
+          echo "Patching fortify-headers download URL..."
+          sed -i 's|http://dl.2f30.org/releases|https://github.com/Sp0Xik/keenetic-huawei-integration/raw/main/dl|' toolchain/fortify-headers/Makefile
+          cat toolchain/fortify-headers/Makefile
 
       - name: Build toolchain
         run: |
@@ -112,6 +120,7 @@ jobs:
             else
               echo "No mipsel compiler found, exiting..."
               ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
+              ls -R staging_dir/toolchain-mipsel-ndms-linux-musl/ || true
               exit 1
             fi
           fi
