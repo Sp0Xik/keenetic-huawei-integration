@@ -1,0 +1,11 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -433,7 +433,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/json_config.h DESTINATION ${CMAKE_INSTAL
+ if (NOT WIN32)
+     # pkg-config
+     add_subdirectory(cmake)
+-    add_subdirectory(doc)
++#    add_subdirectory(doc)
+ endif()
+ 
+ include(CTest)
