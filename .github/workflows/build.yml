@@ -31,6 +31,8 @@ jobs:
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/libs/libubox/Makefile > package/libubox/Makefile
           mkdir -p package/uci
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/system/uci/Makefile > package/uci/Makefile
+          mkdir -p dl
+          curl -sL https://github.com/Sp0Xik/keenetic-huawei-integration/raw/main/dl/fortify-headers-2.1.tar.gz > dl/fortify-headers-2.1.tar.gz
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools binutils patch
           echo "Checking if flock is installed..."
@@ -72,6 +74,8 @@ jobs:
           echo "CONFIG_BINUTILS=y" >> .config
           echo "CONFIG_MUSL=y" >> .config
           echo "CONFIG_GCC_VERSION=\"12.3.0\"" >> .config
+          echo "CONFIG_TARGET_mipsel=y" >> .config
+          echo "CONFIG_TARGET_SUBARCH=\"mipsel_24kc\"" >> .config
           cat .config
           echo "Running make oldconfig to sync configuration..."
           make oldconfig
@@ -98,31 +102,43 @@ jobs:
           echo "Building toolchain..."
           make toolchain/install V=s 2>&1 | tee toolchain_install.log || { echo "make toolchain/install failed, see toolchain_install.log"; cat toolchain_install.log; exit 1; }
           echo "Listing contents of staging_dir/toolchain-mipsel-linux-musl/bin to verify compiler..."
-          ls -l staging_dir/toolchain-mipsel-linux-musl/bin/ || { 
-            echo "toolchain directory not found"
-            echo "Listing all staging_dir contents for debugging..."
-            ls -R staging_dir/ || true
-            echo "Checking for alternative toolchain directories..."
-            find staging_dir/ -type d -name "toolchain*" || true
-            echo "Listing contents of build_dir for debugging..."
-            ls -R build_dir/ || true
-            exit 1
+          ls -l staging_dir/toolchain-mipsel-linux-musl/bin/ || {
+            echo "toolchain directory not found, checking for mipsel-ndms-linux-musl..."
+            ls -l staging_dir/toolchain-mipsel-ndms-linux-musl/bin/ || {
+              echo "No toolchain bin directory found"
+              echo "Listing all staging_dir contents for debugging..."
+              ls -R staging_dir/ || true
+              echo "Checking for alternative toolchain directories..."
+              find staging_dir/ -type d -name "toolchain*" || true
+              echo "Listing contents of build_dir for debugging..."
+              ls -R build_dir/ || true
+              exit 1
+            }
           }
           echo "Listing contents of staging_dir/host/bin..."
           ls -l staging_dir/host/bin/
-          echo "Checking for mipsel compiler..."
+          echo "Checking for mipsel compiler and strip utility..."
           if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-linux-musl-gcc ]; then
             echo "mipsel-linux-musl-gcc found"
-          else
-            echo "mipsel-linux-musl-gcc NOT found, checking for mipsel-ndms-linux-musl-gcc..."
-            if [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
-              echo "mipsel-ndms-linux-musl-gcc found"
+            if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-linux-musl-strip ]; then
+              echo "mipsel-linux-musl-strip found"
             else
-              echo "No mipsel compiler found, exiting..."
-              ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
+              echo "mipsel-linux-musl-strip NOT found"
+            fi
+          elif [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
+            echo "mipsel-ndms-linux-musl-gcc found"
+            if [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-strip ]; then
+              echo "mipsel-ndms-linux-musl-strip found"
+            else
+              echo "mipsel-ndms-linux-musl-strip NOT found"
               ls -R staging_dir/toolchain-mipsel-ndms-linux-musl/ || true
               exit 1
             fi
+          else
+            echo "No mipsel compiler found, exiting..."
+            ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
+            ls -R staging_dir/toolchain-mipsel-ndms-linux-musl/ || true
+            exit 1
           fi
 
       - name: Debug directory contents
