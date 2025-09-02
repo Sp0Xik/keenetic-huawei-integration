@@ -30,7 +30,7 @@ jobs:
           mkdir -p package/uci
           curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/system/uci/Makefile > package/uci/Makefile
           sudo apt update
-          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib
+          sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools
           echo "Checking if flock is installed..."
           if command -v flock >/dev/null 2>&1; then
             echo "flock found at $(which flock)"
@@ -81,7 +81,7 @@ jobs:
           echo "Building toolchain..."
           make toolchain/install V=s 2>&1 | tee toolchain_install.log || { echo "make toolchain/install failed, see toolchain_install.log"; cat toolchain_install.log; exit 1; }
           echo "Listing contents of staging_dir/toolchain-mipsel-linux-musl_musl/bin to verify compiler..."
-          ls -l staging_dir/toolchain-mipsel-linux-musl_musl/bin/ || { echo "toolchain directory not found"; exit 1; }
+          ls -l staging_dir/toolchain-mipsel-linux-musl_musl/bin/ || { echo "toolchain directory not found"; ls -R staging_dir/ || true; exit 1; }
           echo "Listing contents of staging_dir/host/bin..."
           ls -l staging_dir/host/bin/
           echo "Checking for mipsel compiler..."
@@ -89,6 +89,7 @@ jobs:
             echo "mipsel-linux-musl-gcc found"
           else
             echo "mipsel-linux-musl-gcc NOT found, exiting..."
+            ls -R staging_dir/toolchain-mipsel-linux-musl_musl/ || true
             exit 1
           fi
 
