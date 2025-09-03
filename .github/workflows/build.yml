@@ -21,18 +21,8 @@ jobs:
           mkdir -p keenetic-sdk/package/keenetic-huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
-          mkdir -p package/libjson-c
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/libs/libjson-c/Makefile > package/libjson-c/Makefile
-          mkdir -p package/libjson-c/patches
-          curl -sL https://raw.githubusercontent.com/Sp0Xik/keenetic-huawei-integration/main/patches/001-disable-doc-subdirectory.patch > package/libjson-c/patches/001-disable-doc-subdirectory.patch
-          mkdir -p package/lua
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/utils/lua/Makefile > package/lua/Makefile
-          mkdir -p package/libubox
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/libs/libubox/Makefile > package/libubox/Makefile
-          mkdir -p package/uci
-          curl -sL https://raw.githubusercontent.com/openwrt/openwrt/openwrt-23.05/package/system/uci/Makefile > package/uci/Makefile
           mkdir -p dl
-          curl -sL https://github.com/Sp0Xik/keenetic-huawei-integration/raw/main/dl/fortify-headers-2.1.tar.gz > dl/fortify-headers-2.1.tar.gz
+          curl -sL https://github.com/jvoisin/fortify-headers/releases/download/2.1/fortify-headers-2.1.tar.gz > dl/fortify-headers-2.1.tar.gz
           sudo apt update
           sudo apt install -y build-essential git python3 attr bc curl gawk libhtml-parser-perl libjson-perl libncurses-dev libssl-dev libxml-libxml-perl subversion unzip zlib1g-dev make gcc g++ lzip gperf protobuf-c-compiler flex bison util-linux cmake libc-dev gcc-multilib g++-multilib musl musl-dev musl-tools binutils patch
           echo "Checking if flock is installed..."
@@ -77,6 +67,7 @@ jobs:
           echo "CONFIG_TARGET_mipsel=y" >> .config
           echo "CONFIG_TARGET_SUBARCH=\"mipsel_24kc\"" >> .config
           echo "CONFIG_CROSS_COMPILER_PREFIX=\"mipsel-ndms-linux-musl-\"" >> .config
+          echo "CONFIG_BUILD_LOG=y" >> .config
           cat .config
           echo "Running make oldconfig to sync configuration..."
           make oldconfig
@@ -90,8 +81,19 @@ jobs:
         run: |
           cd keenetic-sdk
           echo "Patching fortify-headers download URL..."
-          sed -i 's|http://dl.2f30.org/releases|https://github.com/Sp0Xik/keenetic-huawei-integration/raw/main/dl|' toolchain/fortify-headers/Makefile
+          sed -i 's|http://dl.2f30.org/releases|https://github.com/jvoisin/fortify-headers/releases/download/2.1|' toolchain/fortify-headers/Makefile
           cat toolchain/fortify-headers/Makefile
+
+      - name: Patch toolchain prefix
+        run: |
+          cd keenetic-sdk
+          echo "Patching toolchain Makefiles for mipsel-ndms-linux-musl..."
+          sed -i 's|mipsel-linux-musl-|mipsel-ndms-linux-musl-|g' toolchain/gcc/Makefile
+          sed -i 's|mipsel-linux-musl-|mipsel-ndms-linux-musl-|g' toolchain/binutils/Makefile
+          sed -i 's|mipsel-linux-musl-|mipsel-ndms-linux-musl-|g' toolchain/musl/Makefile
+          cat toolchain/gcc/Makefile
+          cat toolchain/binutils/Makefile
+          cat toolchain/musl/Makefile
 
       - name: Build toolchain
         run: |
@@ -102,45 +104,34 @@ jobs:
           make tools/install V=s 2>&1 | tee tools_install.log || { echo "make tools/install failed, see tools_install.log"; cat tools_install.log; exit 1; }
           echo "Building toolchain..."
           make toolchain/install V=s 2>&1 | tee toolchain_install.log || { echo "make toolchain/install failed, see toolchain_install.log"; cat toolchain_install.log; exit 1; }
-          echo "Listing contents of staging_dir/toolchain-mipsel-linux-musl/bin to verify compiler..."
-          ls -l staging_dir/toolchain-mipsel-linux-musl/bin/ || {
-            echo "toolchain directory not found, checking for mipsel-ndms-linux-musl..."
-            ls -l staging_dir/toolchain-mipsel-ndms-linux-musl/bin/ || {
-              echo "No toolchain bin directory found"
-              echo "Listing all staging_dir contents for debugging..."
-              ls -R staging_dir/ || true
-              echo "Checking for alternative toolchain directories..."
-              find staging_dir/ -type d -name "toolchain*" || true
-              echo "Listing contents of build_dir for debugging..."
-              ls -R build_dir/ || true
-              exit 1
-            }
-          }
-          echo "Listing contents of staging_dir/host/bin..."
-          ls -l staging_dir/host/bin/
-          echo "Checking for mipsel compiler and strip utility..."
-          if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-linux-musl-gcc ]; then
-            echo "mipsel-linux-musl-gcc found"
-            if [ -f staging_dir/toolchain-mipsel-linux-musl/bin/mipsel-linux-musl-strip ]; then
-              echo "mipsel-linux-musl-strip found"
+          echo "Listing contents of staging_dir..."
+          ls -R staging_dir/ || true
+          echo "Checking for toolchain directories..."
+          find staging_dir/ -type d -name "toolchain*" || true
+          echo "Listing contents of build_dir..."
+          ls -R build_dir/ || true
+          echo "Checking for mipsel-ndms-linux-musl toolchain..."
+          if [ -d staging_dir/toolchain-mipsel-ndms-linux-musl/bin ]; then
+            echo "mipsel-ndms-linux-musl bin directory found"
+            ls -l staging_dir/toolchain-mipsel-ndms-linux-musl/bin/
+            if [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
+              echo "mipsel-ndms-linux-musl-gcc found"
             else
-              echo "mipsel-linux-musl-strip NOT found"
+              echo "mipsel-ndms-linux-musl-gcc NOT found"
             fi
-          elif [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-gcc ]; then
-            echo "mipsel-ndms-linux-musl-gcc found"
             if [ -f staging_dir/toolchain-mipsel-ndms-linux-musl/bin/mipsel-ndms-linux-musl-strip ]; then
               echo "mipsel-ndms-linux-musl-strip found"
             else
               echo "mipsel-ndms-linux-musl-strip NOT found"
-              ls -R staging_dir/toolchain-mipsel-ndms-linux-musl/ || true
-              exit 1
             fi
           else
-            echo "No mipsel compiler found, exiting..."
+            echo "mipsel-ndms-linux-musl bin directory NOT found"
             ls -R staging_dir/toolchain-mipsel-linux-musl/ || true
             ls -R staging_dir/toolchain-mipsel-ndms-linux-musl/ || true
             exit 1
           fi
+          echo "Listing contents of staging_dir/host/bin..."
+          ls -l staging_dir/host/bin/
 
       - name: Debug directory contents
         run: |
@@ -157,16 +148,12 @@ jobs:
             echo "Makefile NOT found in package/keenetic-huawei-integration"
             exit 1
           fi
-          echo "Listing contents of package/libjson-c:"
-          ls -R package/libjson-c/
-          echo "Listing contents of staging_dir/host/bin:"
-          ls -l staging_dir/host/bin/
 
       - name: Build OPKG package
         run: |
           cd keenetic-sdk
           make package/keenetic-huawei-integration/clean V=s
-          make package/keenetic-huawei-integration/compile V=s
+          make package/keenetic-huawei-integration/compile V=s 2>&1 | tee package_compile.log || { echo "make package/keenetic-huawei-integration/compile failed, see package_compile.log"; cat package_compile.log; exit 1; }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
