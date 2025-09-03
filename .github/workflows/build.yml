@@ -17,7 +17,16 @@ jobs:
 
       - name: Set up Keenetic SDK
         run: |
+          echo "Cloning Keenetic SDK..."
           git clone --depth 1 --branch 4.03 https://github.com/keenetic/keenetic-sdk.git
+          echo "Checking Keenetic SDK directory structure..."
+          ls -R keenetic-sdk/
+          if [ ! -d keenetic-sdk/toolchain ]; then
+            echo "toolchain directory NOT found in keenetic-sdk!"
+            exit 1
+          fi
+          echo "Listing contents of toolchain directory..."
+          ls -R keenetic-sdk/toolchain/
           mkdir -p keenetic-sdk/package/keenetic-huawei-integration
           find . -maxdepth 1 -not -path "./keenetic-sdk" -not -path . -not -path "./.git" -exec cp -r {} keenetic-sdk/package/keenetic-huawei-integration/ \;
           cd keenetic-sdk
@@ -81,19 +90,14 @@ jobs:
         run: |
           cd keenetic-sdk
           echo "Patching fortify-headers download URL..."
-          sed -i 's|http://dl.2f30.org/releases|https://github.com/jvoisin/fortify-headers/releases/download/2.1|' toolchain/fortify-headers/Makefile
-          cat toolchain/fortify-headers/Makefile
-
-      - name: Patch toolchain prefix
-        run: |
-          cd keenetic-sdk
-          echo "Patching toolchain Makefiles for mipsel-ndms-linux-musl..."
-          sed -i 's|mipsel-linux-musl-|mipsel-ndms-linux-musl-|g' toolchain/gcc/Makefile
-          sed -i 's|mipsel-linux-musl-|mipsel-ndms-linux-musl-|g' toolchain/binutils/Makefile
-          sed -i 's|mipsel-linux-musl-|mipsel-ndms-linux-musl-|g' toolchain/musl/Makefile
-          cat toolchain/gcc/Makefile
-          cat toolchain/binutils/Makefile
-          cat toolchain/musl/Makefile
+          if [ -f toolchain/fortify-headers/Makefile ]; then
+            sed -i 's|http://dl.2f30.org/releases|https://github.com/jvoisin/fortify-headers/releases/download/2.1|' toolchain/fortify-headers/Makefile
+            cat toolchain/fortify-headers/Makefile
+          else
+            echo "fortify-headers Makefile NOT found!"
+            ls -R toolchain/
+            exit 1
+          fi
 
       - name: Build toolchain
         run: |
